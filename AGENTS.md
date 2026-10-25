@@ -2,7 +2,6 @@
 
 ## Project Scope
 - `SKSEHelpers` is a shared C++23 header-only (CMake `INTERFACE`) library of helpers for SKSE plugins built on **CommonLibSSE-NG** (`alandtse/CommonLibSSE-NG`). Target: `SKSEHelpers` (alias `SKSEHelpers::SKSEHelpers`) in `CMakeLists.txt`.
-- Code was copied from `STB-Widgets` (Observables, TaskScheduler, ResourceLock, Utilities, TESLookup, PointerLinkedList), `STB` (IterationTimer) and `PrismaUI` (Hooks, TraitUtils, VariantUtils, CallPipeline). Those projects keep their own copies and do **not** consume this library; changes here do not propagate there and vice versa.
 - CommonLibSSE-NG is **not** vendored (no submodule). Do not add one.
 
 ## Layout
