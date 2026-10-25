@@ -161,9 +161,11 @@ private:
 		return false;
 	}
 
+	// Declared first so it is destroyed last: destroying queued tasks may destroy IntervalSubscriptions they own (e.g.
+	// WaitFor), which call Unsubscribe() on this scheduler.
+	ResourceLock<std::vector<Observables::SubscriptionId>> _unsubscribedIntervalTasks{};
 	ResourceLock<std::priority_queue<Task, std::vector<Task>, TaskComparer<Task>>> _tasks{};
 	ResourceLock<std::priority_queue<IntervalTask, std::vector<IntervalTask>, TaskComparer<IntervalTask>>> _intervalTasks{};
-	ResourceLock<std::vector<Observables::SubscriptionId>> _unsubscribedIntervalTasks{};
 	std::atomic<TTimestamp> _timestamp;
 	std::atomic<Observables::SubscriptionId> _nextIntervalId = 1;
 };

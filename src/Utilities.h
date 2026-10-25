@@ -1,82 +1,14 @@
 ﻿#pragma once
 
-#include "TaskScheduler.h"
+#include "GenericUtilities.h"
 
 #include <RE/Skyrim.h>
 #include <SKSE/SKSE.h>
 
 #include <atomic>
-#include <chrono>
-#include <cmath>
 #include <concepts>
-#include <functional>
-#include <memory>
 #include <ranges>
-#include <tuple>
-#include <type_traits>
 #include <utility>
-
-template <std::floating_point T, T Epsilon = static_cast<T>(0.1)>
-struct NearlyEqualComparer
-{
-	bool operator()(const T& a, const T& b) const { return std::abs(a - b) < Epsilon; }
-};
-
-template <SchedulerTimestamp TTimestamp, class TFunc>
-auto Debounce(TaskScheduler<TTimestamp>& scheduler, TFunc&& func, typename TaskScheduler<TTimestamp>::Duration delay)
-{
-	auto counter = std::make_shared<std::atomic_uint32_t>(0);
-	auto funcShared = std::make_shared<std::decay_t<TFunc>>(std::forward<TFunc>(func));
-
-	return [&scheduler, func = std::move(funcShared), counter = std::move(counter), delay]<class... TCallArgs>(
-			   TCallArgs&&... args) mutable {
-		auto tag = counter->fetch_add(1, std::memory_order_relaxed) + 1;
-		// Debounced work runs later, so capture a snapshot of the call arguments now.
-		auto scheduledArgs = std::make_unique<std::tuple<std::decay_t<TCallArgs>...>>(std::forward<TCallArgs>(args)...);
-
-		scheduler.Schedule(
-			[func, counter, tag, scheduledArgs = std::move(scheduledArgs)]() mutable {
-				if (counter->load(std::memory_order_relaxed) != tag) {
-					return;
-				}
-
-				std::apply(
-					[&func]<typename... TArgs>(TArgs&&... storedArgs) { std::invoke(*func, std::forward<TArgs>(storedArgs)...); },
-					*scheduledArgs);
-			},
-			delay);
-	};
-}
-
-template <SchedulerTimestamp TTimestamp, std::invocable TPredicate, std::invocable TContinuation>
-	requires std::same_as<bool, std::invoke_result_t<TPredicate>>
-void WaitFor(TaskScheduler<TTimestamp>& scheduler, TPredicate&& predicate, TContinuation&& continuation,
-	typename TaskScheduler<TTimestamp>::Duration checkInterval)
-{
-	auto subPtr = std::make_shared<typename TaskScheduler<TTimestamp>::IntervalSubscription>();
-	*subPtr = scheduler.ScheduleInterval(
-		[predicate = std::forward<TPredicate>(predicate), continuation = std::forward<TContinuation>(continuation),
-			subPtr] mutable {
-			if (std::invoke(predicate)) {
-				std::invoke(continuation);
-				subPtr.reset();
-			}
-		},
-		checkInterval);
-}
-
-template <std::ranges::range T>
-auto SafeRange(T* ptr)
-{
-	using ContainerType = std::decay_t<T>;
-
-	[[likely]]
-	if (ptr) {
-		return std::ranges::subrange(ptr->begin(), ptr->end());
-	}
-
-	return std::ranges::subrange(typename ContainerType::iterator{}, typename ContainerType::iterator{});
-}
 
 inline bool IsActive(const RE::ActiveEffect* ef) { return ef && !ef->flags.any(RE::ActiveEffect::Flag::kInactive); }
 
@@ -84,15 +16,6 @@ inline auto GetActorActiveEffects(RE::Actor& actor)
 {
 	return SafeRange(actor.GetActiveEffectList()) | std::views::filter([](const RE::ActiveEffect* ae) { return IsActive(ae); });
 }
-
-struct TruePredicate
-{
-	template <class... TArgs>
-	constexpr bool operator()(TArgs&&...) const noexcept
-	{
-		return true;
-	}
-};
 
 template <std::invocable<const RE::TESBoundObject&> TFilter = TruePredicate>
 auto GetEquippedItems(RE::Actor& actor, TFilter&& filter = TruePredicate{})

@@ -10,7 +10,8 @@
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-windows-static",
         "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>",
-        "CMAKE_CXX_FLAGS": "/EHsc /MP $penv{CXXFLAGS}"
+        "CMAKE_CXX_FLAGS": "/EHsc /MP $penv{CXXFLAGS}",
+        "VCPKG_MANIFEST_FEATURES": "tests"
       }
     }
   ],
@@ -24,6 +25,24 @@
       "name": "debug",
       "configurePreset": "default",
       "configuration": "Debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "release",
+      "configurePreset": "default",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "debug",
+      "configurePreset": "default",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
     }
   ]
 }

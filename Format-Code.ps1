@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$sourceRoot = Join-Path $repoRoot "src"
+$sourceRoots = @("src", "tests") | ForEach-Object { Join-Path $repoRoot $_ }
 
 $clangFormatCommand = Get-Command $ClangFormat -ErrorAction SilentlyContinue
 if ($null -eq $clangFormatCommand) {
@@ -14,7 +14,7 @@ if ($null -eq $clangFormatCommand) {
     exit 1
 }
 
-$sourceFiles = @(Get-ChildItem -Path $sourceRoot -Recurse -File -Include *.h, *.cpp | Sort-Object FullName)
+$sourceFiles = @(Get-ChildItem -Path $sourceRoots -Recurse -File -Include *.h, *.cpp | Sort-Object FullName)
 
 if ($sourceFiles.Count -eq 0) {
     Write-Host "No .h or .cpp files found."

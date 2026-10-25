@@ -4,6 +4,7 @@
 #include "Unit.h"
 
 #include <concepts>
+#include <cstdint>
 #include <functional>
 #include <unordered_map>
 #include <utility>
@@ -35,10 +36,16 @@ namespace Observables
 		/// Удаляет подписку по идентификатору или помечает её для удаления после текущего уведомления.
 		void Unsubscribe(SubscriptionId id) noexcept
 		{
-			if (_isNotifying) {
-				_observers[id].IsUnsubscribed = true;
-			} else {
+			if (_notifyDepth == 0) {
 				_observers.erase(id);
+				return;
+			}
+
+			// Observers must not be erased while Notify() iterates them; they are erased when the outermost Notify() ends.
+			if (auto it = _observers.find(id); it != _observers.end()) {
+				it->second.IsUnsubscribed = true;
+			} else {
+				std::erase_if(_pendingObservers, [id](const auto& pending) { return pending.first == id; });
 			}
 		}
 
@@ -51,7 +58,7 @@ namespace Observables
 		Subscription Subscribe(TObserver&& observer)
 		{
 			const SubscriptionId id = _nextId++;
-			_observers.emplace(id, SubscriptionData{ .Observer = std::forward<TObserver>(observer) });
+			AddObserver(id, Callback(std::forward<TObserver>(observer)));
 			return Subscription{ this, id };
 		}
 
@@ -61,30 +68,29 @@ namespace Observables
 		Subscription SubscribeAndNotify(TObserver&& observer, Item arg)
 		{
 			const SubscriptionId id = _nextId++;
-			_observers.emplace(id, SubscriptionData{ .Observer = std::forward<TObserver>(observer) });
-			_observers[id].Observer(arg);
+			Callback callback(std::forward<TObserver>(observer));
+			callback(arg);
+			AddObserver(id, std::move(callback));
 			return Subscription{ this, id };
 		}
 
 		/// Отправляет значение всем активным наблюдателям.
+		/// Наблюдатели, подписанные во время уведомления, получают значения начиная со следующего уведомления.
 		void Notify(Item arg)
 		{
-			_isNotifying = true;
-			std::vector<SubscriptionId> unsubscribeList;
-
-			for (auto& [id, subscriptionData] : _observers) {
-				if (subscriptionData.IsUnsubscribed) {
-					unsubscribeList.push_back(id);
-				} else {
-					subscriptionData.Observer(arg);
+			++_notifyDepth;
+			try {
+				for (auto& [id, subscriptionData] : _observers) {
+					if (!subscriptionData.IsUnsubscribed) {
+						subscriptionData.Observer(arg);
+					}
 				}
+			} catch (...) {
+				EndNotify();
+				throw;
 			}
 
-			for (auto id : unsubscribeList) {
-				_observers.erase(id);
-			}
-
-			_isNotifying = false;
+			EndNotify();
 		}
 
 	private:
@@ -94,8 +100,33 @@ namespace Observables
 			bool IsUnsubscribed = false;
 		};
 
+		// Inserting into _observers while Notify() iterates it may rehash and invalidate the iteration, so observers
+		// subscribed during a notification wait in _pendingObservers until the outermost Notify() ends.
+		void AddObserver(SubscriptionId id, Callback&& observer)
+		{
+			if (_notifyDepth == 0) {
+				_observers.emplace(id, SubscriptionData{ .Observer = std::move(observer) });
+			} else {
+				_pendingObservers.emplace_back(id, std::move(observer));
+			}
+		}
+
+		void EndNotify()
+		{
+			if (--_notifyDepth != 0) {
+				return;
+			}
+
+			std::erase_if(_observers, [](const auto& entry) { return entry.second.IsUnsubscribed; });
+			for (auto& [id, observer] : _pendingObservers) {
+				_observers.emplace(id, SubscriptionData{ .Observer = std::move(observer) });
+			}
+			_pendingObservers.clear();
+		}
+
 		std::unordered_map<SubscriptionId, SubscriptionData> _observers{};
+		std::vector<std::pair<SubscriptionId, Callback>> _pendingObservers{};
 		SubscriptionId _nextId = 1;
-		bool _isNotifying = false;
+		std::uint32_t _notifyDepth = 0;
 	};
 }

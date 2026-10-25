@@ -1,0 +1,54 @@
+﻿#pragma once
+
+#include "TaskScheduler.h"
+
+#include <atomic>
+#include <concepts>
+#include <functional>
+#include <memory>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+
+template <SchedulerTimestamp TTimestamp, class TFunc>
+auto Debounce(TaskScheduler<TTimestamp>& scheduler, TFunc&& func, typename TaskScheduler<TTimestamp>::Duration delay)
+{
+	auto counter = std::make_shared<std::atomic_uint32_t>(0);
+	auto funcShared = std::make_shared<std::decay_t<TFunc>>(std::forward<TFunc>(func));
+
+	return [&scheduler, func = std::move(funcShared), counter = std::move(counter), delay]<class... TCallArgs>(
+			   TCallArgs&&... args) mutable {
+		auto tag = counter->fetch_add(1, std::memory_order_relaxed) + 1;
+		// Debounced work runs later, so capture a snapshot of the call arguments now.
+		auto scheduledArgs = std::make_unique<std::tuple<std::decay_t<TCallArgs>...>>(std::forward<TCallArgs>(args)...);
+
+		scheduler.Schedule(
+			[func, counter, tag, scheduledArgs = std::move(scheduledArgs)]() mutable {
+				if (counter->load(std::memory_order_relaxed) != tag) {
+					return;
+				}
+
+				std::apply(
+					[&func]<typename... TArgs>(TArgs&&... storedArgs) { std::invoke(*func, std::forward<TArgs>(storedArgs)...); },
+					*scheduledArgs);
+			},
+			delay);
+	};
+}
+
+template <SchedulerTimestamp TTimestamp, std::invocable TPredicate, std::invocable TContinuation>
+	requires std::same_as<bool, std::invoke_result_t<TPredicate>>
+void WaitFor(TaskScheduler<TTimestamp>& scheduler, TPredicate&& predicate, TContinuation&& continuation,
+	typename TaskScheduler<TTimestamp>::Duration checkInterval)
+{
+	auto subPtr = std::make_shared<typename TaskScheduler<TTimestamp>::IntervalSubscription>();
+	*subPtr = scheduler.ScheduleInterval(
+		[predicate = std::forward<TPredicate>(predicate), continuation = std::forward<TContinuation>(continuation),
+			subPtr] mutable {
+			if (std::invoke(predicate)) {
+				std::invoke(continuation);
+				subPtr.reset();
+			}
+		},
+		checkInterval);
+}

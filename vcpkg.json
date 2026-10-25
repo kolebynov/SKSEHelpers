@@ -10,5 +10,13 @@
     "minhook",
     "rapidcsv",
     "spdlog"
-  ]
+  ],
+  "features": {
+    "tests": {
+      "description": "Build the SKSEHelpers unit tests.",
+      "dependencies": [
+        "catch2"
+      ]
+    }
+  }
 }

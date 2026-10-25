@@ -72,8 +72,16 @@ target_compile_definitions(
 		WIN32_LEAN_AND_MEAN
 )
 
+# Every warning is enabled and fatal for this library's code. Angle-bracket includes (STL, CommonLib, MinHook,
+# Windows SDK, Catch2) are treated as external and silenced, so only warnings from SKSEHelpers' own files are reported.
+# Applied to the header checks and the tests.
+set(SKSEHELPERS_WARNING_OPTIONS)
+if (MSVC)
+	set(SKSEHELPERS_WARNING_OPTIONS /utf-8 /permissive- /Wall /WX /external:anglebrackets /external:W0)
+endif ()
+
 # Headers are only compiled by consumers, so compile each one on its own here as well; this keeps every header
-# self-contained and subject to the warning flags below. Enabled by default only for standalone builds.
+# self-contained and subject to the warning flags above. Enabled by default only for standalone builds.
 option(SKSEHELPERS_HEADER_CHECKS "Compile every header in its own translation unit." ${PROJECT_IS_TOP_LEVEL})
 if (SKSEHELPERS_HEADER_CHECKS)
 	set(HEADER_CHECK_SOURCES)
@@ -89,19 +97,12 @@ if (SKSEHELPERS_HEADER_CHECKS)
 
 	add_library(${PROJECT_NAME}HeaderChecks OBJECT ${HEADER_CHECK_SOURCES} ${HEADERS} .clang-format .editorconfig)
 	target_link_libraries(${PROJECT_NAME}HeaderChecks PRIVATE ${PROJECT_NAME})
+	target_compile_options(${PROJECT_NAME}HeaderChecks PRIVATE ${SKSEHELPERS_WARNING_OPTIONS})
+endif ()
 
-	# Every warning is enabled and fatal for this library's code. Angle-bracket includes (STL, CommonLib, MinHook,
-	# Windows SDK) are treated as external and silenced, so only warnings from SKSEHelpers' own files are reported.
-	if (MSVC)
-		target_compile_options(
-			${PROJECT_NAME}HeaderChecks
-			PRIVATE
-				/utf-8
-				/permissive-
-				/Wall
-				/WX
-				/external:anglebrackets
-				/external:W0
-		)
-	endif ()
+# Unit tests need Catch2 from the vcpkg manifest feature "tests" (enabled by the "default" configure preset).
+option(SKSEHELPERS_TESTS "Build the unit tests." ${PROJECT_IS_TOP_LEVEL})
+if (SKSEHELPERS_TESTS)
+	enable_testing()
+	add_subdirectory(tests)
 endif ()
