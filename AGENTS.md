@@ -16,7 +16,7 @@ Everything lives in `src/` (headers and sources together); `src/` is the PUBLIC 
 |`src/TESLookup.h`|`LookupByEditorId` / `LookupByFormId` / `LookupByAbsoluteFormId` with mandatory `throwOnError`; debug builds warn on duplicate lookups.|
 |`src/ResourceLock.h`|Mutex-guarded value with `Acquire()` lock handles.|
 |`src/PointerLinkedList.h`|Range/iterator view over intrusive `next`-pointer lists.|
-|`src/Hooks/`|`Hooks.h` (`HookDefinition` concept, `Install<THook>` via SKSE trampoline `write_call<5>` or MinHook), `HookInstaller.h` (wraps a handler around the original via `CallPipeline`; one install per hook type per DLL), `HooksLib.h` (PrismaUI's concrete hook definitions).|
+|`src/Hooks/`|`Hooks.h` (`HookDefinition` concept: address hooks `Id`+`Offset` installed via SKSE trampoline `write_call<5>` (`WriteCall`) or MinHook (`Detour`); vfunc hooks `VTable` (`REL::VariantID` from `RE::VTABLE_*`)+`Index` installed via `write_vfunc` (`VFunc`)), `HookInstaller.h` (wraps a handler around the original via `CallPipeline`; the handler's result is returned to the game; one install per hook type per DLL), `HooksLib.h` (concrete hook definitions from PrismaUI and SkyrimDungeons; the SkyrimDungeons ones are SE-only: AE id / AE+VR offsets are 0, vfunc slots verified on SE only).|
 |`src/CallPipeline.h`, `src/TraitUtils.h`, `src/VariantUtils.h`|Generic metaprogramming: call pipelines, `FunctionTraits`/`TupleAppendT`, `Overload`/`Match`.|
 
 Most helpers are in the global namespace (`ResourceLock`, `TaskScheduler`, `Overload`, `Match`, `IsActive`, …); `Observables`, `Hooks`, `TESLookup` are namespaced. Keep new names unambiguous.

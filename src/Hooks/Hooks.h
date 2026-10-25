@@ -9,6 +9,7 @@
 #include <MinHook.h>
 
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 
@@ -18,22 +19,39 @@ namespace Hooks
 	{
 		WriteCall = 1,
 		Detour,
+		VFunc,
 	};
 
+	// Patches the code at Id + Offset: a call site (WriteCall) or a function entry (Detour).
 	template <typename T>
-	concept HookDefinition = FunctionTraits<typename T::FuncDefinition>::IsFunction && requires {
+	concept AddressHookDefinition = FunctionTraits<typename T::FuncDefinition>::IsFunction && requires {
 		{ T::Id } -> std::same_as<const REL::RelocationID&>;
 		{ T::Offset } -> std::same_as<const REL::VariantOffset&>;
 		{ T::Type } -> std::same_as<const HookType&>;
-	};
+	} && (T::Type == HookType::WriteCall || T::Type == HookType::Detour);
+
+	// Replaces slot Index of the vtable VTable (take it from CommonLib's RE::VTABLE_* arrays).
+	template <typename T>
+	concept VFuncHookDefinition = FunctionTraits<typename T::FuncDefinition>::IsFunction && requires {
+		{ T::VTable } -> std::same_as<const REL::VariantID&>;
+		{ T::Index } -> std::same_as<const std::size_t&>;
+		{ T::Type } -> std::same_as<const HookType&>;
+	} && (T::Type == HookType::VFunc);
+
+	template <typename T>
+	concept HookDefinition = AddressHookDefinition<T> || VFuncHookDefinition<T>;
 
 	template <HookDefinition THook>
 	REL::Relocation<typename THook::FuncDefinition> Install(typename THook::FuncDefinition* func)
 	{
-		auto targetAddress = REL::Relocation<>(THook::Id, THook::Offset).address();
-		if constexpr (THook::Type == HookType::WriteCall) {
+		if constexpr (THook::Type == HookType::VFunc) {
+			REL::Relocation<std::uintptr_t> vtable{ THook::VTable };
+			return REL::Relocation<typename THook::FuncDefinition>(vtable.write_vfunc(THook::Index, func));
+		} else if constexpr (THook::Type == HookType::WriteCall) {
+			const auto targetAddress = REL::Relocation<>(THook::Id, THook::Offset).address();
 			return REL::Relocation<typename THook::FuncDefinition>(SKSE::GetTrampoline().write_call<5>(targetAddress, func));
 		} else if constexpr (THook::Type == HookType::Detour) {
+			const auto targetAddress = REL::Relocation<>(THook::Id, THook::Offset).address();
 			auto status = MH_Initialize();
 			if (status != MH_OK && status != MH_ERROR_ALREADY_INITIALIZED) {
 				SKSE::log::critical("MinHook init failed");

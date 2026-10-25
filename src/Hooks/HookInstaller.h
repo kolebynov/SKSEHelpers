@@ -29,7 +29,10 @@ namespace Hooks
 		struct HookFunc<THook, THandler, std::tuple<TArgs...>>
 		{
 		public:
-			static void Invoke(TArgs... args) { std::invoke(*CallPipeline, std::forward<TArgs>(args)...); }
+			static typename FunctionTraits<typename THook::FuncDefinition>::ReturnType Invoke(TArgs... args)
+			{
+				return std::invoke(*CallPipeline, std::forward<TArgs>(args)...);
+			}
 
 			static inline std::optional<CallPipeline<std::decay_t<THandler>, REL::Relocation<typename THook::FuncDefinition>>>
 				CallPipeline;

@@ -27,7 +27,7 @@ public:
 
 	template <class... TArgs>
 		requires(std::is_invocable_v<const Action&, const Next&, TArgs...>)
-	auto operator()(TArgs... args) const
+	decltype(auto) operator()(TArgs&&... args) const
 	{
 		return std::invoke(_action, _next, std::forward<TArgs>(args)...);
 	}
@@ -59,7 +59,7 @@ public:
 
 	template <class... TArgs>
 		requires(std::is_invocable_v<const Action&, TArgs...>)
-	auto operator()(TArgs... args) const
+	decltype(auto) operator()(TArgs&&... args) const
 	{
 		return std::invoke(_action, std::forward<TArgs>(args)...);
 	}
