@@ -17,7 +17,7 @@ namespace Hooks
 	enum class HookType
 	{
 		WriteCall = 1,
-		Direct,
+		Detour,
 	};
 
 	template <typename T>
@@ -33,7 +33,7 @@ namespace Hooks
 		auto targetAddress = REL::Relocation<>(THook::Id, THook::Offset).address();
 		if constexpr (THook::Type == HookType::WriteCall) {
 			return REL::Relocation<typename THook::FuncDefinition>(SKSE::GetTrampoline().write_call<5>(targetAddress, func));
-		} else if constexpr (THook::Type == HookType::Direct) {
+		} else if constexpr (THook::Type == HookType::Detour) {
 			auto status = MH_Initialize();
 			if (status != MH_OK && status != MH_ERROR_ALREADY_INITIALIZED) {
 				SKSE::log::critical("MinHook init failed");

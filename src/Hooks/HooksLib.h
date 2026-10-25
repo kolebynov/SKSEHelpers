@@ -37,6 +37,6 @@ namespace Hooks
 		using FuncDefinition = void(RE::BSGraphics::Renderer*, std::uint32_t);
 		static constexpr auto Id = REL::RelocationID(75460, 77245);
 		static constexpr auto Offset = REL::VariantOffset(0, 0, 0);
-		static constexpr auto Type = HookType::Direct;
+		static constexpr auto Type = HookType::Detour;
 	};
 }
