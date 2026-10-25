@@ -74,6 +74,16 @@ TEST_CASE("CallPipeline copies lvalue wrappers", "[CallPipeline]")
 	CHECK(pipeline(1) == 3);
 }
 
+TEST_CASE("CallPipeline supports mutable actions and wrappers", "[CallPipeline]")
+{
+	auto pipeline = StartCallPipeline([calls = 0](int value) mutable {
+		return value + ++calls;
+	}).Wrap([calls = 0](auto& next, int value) mutable { return next(value) * 10 + ++calls; });
+
+	CHECK(pipeline(0) == 11);
+	CHECK(pipeline(0) == 22);
+}
+
 TEST_CASE("Match dispatches on the active alternative", "[VariantUtils]")
 {
 	using Value = std::variant<int, std::string>;

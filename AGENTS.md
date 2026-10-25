@@ -19,9 +19,9 @@ Everything lives in `src/` (headers and sources together); `src/` is the PUBLIC 
 |`src/ResourceLock.h`|Mutex-guarded value with `Acquire()` lock handles.|
 |`src/PointerLinkedList.h`|Range/iterator view over intrusive `next`-pointer lists.|
 |`src/Hooks/`|`Hooks.h` (`HookDefinition` concept: address hooks `Id`+`Offset` installed via SKSE trampoline `write_call<5>` (`WriteCall`) or MinHook (`Detour`); vfunc hooks `VTable` (`REL::VariantID` from `RE::VTABLE_*`)+`Index` installed via `write_vfunc` (`VFunc`)), `HookInstaller.h` (wraps a handler around the original via `CallPipeline`; the handler's result is returned to the game; one install per hook type + handler type per DLL, a repeat logs an error and throws `std::runtime_error` naming both `THook` and `THandler`), `HooksLib.h` (concrete hook definitions from PrismaUI and SkyrimDungeons; the SkyrimDungeons ones are SE-only: AE id / AE+VR offsets are 0, vfunc slots verified on SE only).|
-|`src/CallPipeline.h`, `src/TraitUtils.h`, `src/VariantUtils.h`|Generic metaprogramming: call pipelines, `FunctionTraits`/`TupleAppendT`, `Overload`/`Match`.|
+|`src/CallPipeline.h`, `src/TraitUtils.h`, `src/VariantUtils.h`|Generic metaprogramming: call pipelines (const and non-const `operator()`, so stateful `mutable` actions/wrappers work), `FunctionTraits`/`TupleAppendT`, `Overload`/`Match`.|
 |`tests/runtime/`|Catch2 unit tests (`SKSEHelpersTests` executable, run via CTest). Only headers without CommonLib: the target gets `src/` as include path but does not link `SKSEHelpers`/CommonLib, so including a CommonLib-dependent header fails to compile.|
-|`tests/compile/`|`static_assert`-only tests for CommonLib-dependent headers (`SKSEHelpersCompileTests` OBJECT target, links `SKSEHelpers`); building it is the test.|
+|`tests/compile/`|Compile-only tests for CommonLib-dependent headers (`static_assert`s and never-called functions that instantiate templates; `SKSEHelpersCompileTests` OBJECT target, links `SKSEHelpers`); building it is the test.|
 
 Most helpers are in the global namespace (`ResourceLock`, `TaskScheduler`, `Overload`, `Match`, `IsActive`, …); `Observables`, `Hooks`, `TESLookup` are namespaced. Keep new names unambiguous.
 

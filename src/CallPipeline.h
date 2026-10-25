@@ -32,6 +32,14 @@ public:
 		return std::invoke(_action, _next, std::forward<TArgs>(args)...);
 	}
 
+	// Non-const overload: allows stateful (mutable) actions; next is passed as non-const too.
+	template <class... TArgs>
+		requires(std::is_invocable_v<Action&, Next&, TArgs...>)
+	decltype(auto) operator()(TArgs&&... args)
+	{
+		return std::invoke(_action, _next, std::forward<TArgs>(args)...);
+	}
+
 	CallPipeline& operator=(const CallPipeline& other) = default;
 
 	CallPipeline& operator=(CallPipeline&& other) = default;
@@ -60,6 +68,13 @@ public:
 	template <class... TArgs>
 		requires(std::is_invocable_v<const Action&, TArgs...>)
 	decltype(auto) operator()(TArgs&&... args) const
+	{
+		return std::invoke(_action, std::forward<TArgs>(args)...);
+	}
+
+	template <class... TArgs>
+		requires(std::is_invocable_v<Action&, TArgs...>)
+	decltype(auto) operator()(TArgs&&... args)
 	{
 		return std::invoke(_action, std::forward<TArgs>(args)...);
 	}

@@ -88,3 +88,10 @@ static_assert(!Hooks::HookDefinition<FunctionPointerHook>);
 static_assert(!Hooks::HookDefinition<WrongIndexTypeHook>);
 static_assert(!Hooks::HookDefinition<MissingOffsetHook>);
 static_assert(!Hooks::HookDefinition<int>);
+
+// Instantiates Install with a stateful (mutable) handler; never called.
+void InstallMutableHandler()
+{
+	Hooks::HookInstaller<WriteCallHook>::Install(
+		[calls = 0](const REL::Relocation<int(int)>& original, int value) mutable { return original(value) + ++calls; });
+}

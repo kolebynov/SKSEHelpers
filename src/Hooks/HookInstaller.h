@@ -24,8 +24,8 @@ namespace Hooks
 		};
 
 		template <HookDefinition THook, class THandler, class... TArgs>
-			requires(std::is_invocable_v<const std::decay_t<THandler>&, const REL::Relocation<typename THook::FuncDefinition>&,
-				TArgs...>)
+			requires(
+				std::is_invocable_v<std::decay_t<THandler>&, const REL::Relocation<typename THook::FuncDefinition>&, TArgs...>)
 		struct HookFunc<THook, THandler, std::tuple<TArgs...>>
 		{
 		public:
