@@ -2,7 +2,7 @@
 
 ## Project Scope
 - `SKSEHelpers` is a shared C++23 header-only (CMake `INTERFACE`) library of helpers for SKSE plugins built on **CommonLibSSE-NG** (`alandtse/CommonLibSSE-NG`). Target: `SKSEHelpers` (alias `SKSEHelpers::SKSEHelpers`) in `CMakeLists.txt`.
-- Code was copied from `STB-Widgets` (Observables, TaskScheduler, ResourceLock, Utilities, TESLookup, PointerLinkedList) and `PrismaUI` (Hooks, TraitUtils, VariantUtils, CallPipeline). Those projects keep their own copies and do **not** consume this library; changes here do not propagate there and vice versa.
+- Code was copied from `STB-Widgets` (Observables, TaskScheduler, ResourceLock, Utilities, TESLookup, PointerLinkedList), `STB` (IterationTimer) and `PrismaUI` (Hooks, TraitUtils, VariantUtils, CallPipeline). Those projects keep their own copies and do **not** consume this library; changes here do not propagate there and vice versa.
 - CommonLibSSE-NG is **not** vendored (no submodule). Do not add one.
 
 ## Layout
@@ -18,6 +18,7 @@ Everything lives in `src/` (headers and sources together); `src/` is the PUBLIC 
 |`src/TESLookup.h`|`LookupByEditorId` / `LookupByFormId` / `LookupByAbsoluteFormId` with mandatory `throwOnError`; debug builds warn on duplicate lookups.|
 |`src/ResourceLock.h`|Mutex-guarded value with `Acquire()` lock handles.|
 |`src/PointerLinkedList.h`|Range/iterator view over intrusive `next`-pointer lists.|
+|`src/IterationTimer.h`|`IterationTimer<T>` (floating-point seconds): accumulates `Tick(delta)` and reports when an iteration elapsed, with the number of iterations passed and the remainder carried over; can be disabled. No CommonLib.|
 |`src/Hooks/`|`Hooks.h` (`HookDefinition` concept: address hooks `Id`+`Offset` installed via SKSE trampoline `write_call<5>` (`WriteCall`) or MinHook (`Detour`); vfunc hooks `VTable` (`REL::VariantID` from `RE::VTABLE_*`)+`Index` installed via `write_vfunc` (`VFunc`)), `HookInstaller.h` (wraps a handler around the original via `CallPipeline`; the handler's result is returned to the game; one install per hook type + handler type per DLL, a repeat logs an error and throws `std::runtime_error` naming both `THook` and `THandler`), `HooksLib.h` (concrete hook definitions from PrismaUI and SkyrimDungeons; the SkyrimDungeons ones are SE-only: AE id / AE+VR offsets are 0, vfunc slots verified on SE only).|
 |`src/CallPipeline.h`, `src/TraitUtils.h`, `src/VariantUtils.h`|Generic metaprogramming: call pipelines (const and non-const `operator()`, so stateful `mutable` actions/wrappers work), `FunctionTraits`/`TupleAppendT`, `Overload`/`Match`.|
 |`tests/runtime/`|Catch2 unit tests (`SKSEHelpersTests` executable, run via CTest). Only headers without CommonLib: the target gets `src/` as include path but does not link `SKSEHelpers`/CommonLib, so including a CommonLib-dependent header fails to compile.|
