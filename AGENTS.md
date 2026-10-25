@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Project Scope
-- `SKSEHelpers` is a shared C++23 static library of helpers for SKSE plugins built on **CommonLibSSE-NG** (`alandtse/CommonLibSSE-NG`). Target: `SKSEHelpers` (alias `SKSEHelpers::SKSEHelpers`) in `CMakeLists.txt`.
+- `SKSEHelpers` is a shared C++23 header-only (CMake `INTERFACE`) library of helpers for SKSE plugins built on **CommonLibSSE-NG** (`alandtse/CommonLibSSE-NG`). Target: `SKSEHelpers` (alias `SKSEHelpers::SKSEHelpers`) in `CMakeLists.txt`.
 - Code was copied from `STB-Widgets` (Observables, TaskScheduler, ResourceLock, Utilities, TESLookup, PointerLinkedList) and `PrismaUI` (Hooks, TraitUtils, VariantUtils, CallPipeline). Those projects keep their own copies and do **not** consume this library; changes here do not propagate there and vice versa.
 - CommonLibSSE-NG is **not** vendored (no submodule). Do not add one.
 
@@ -11,8 +11,8 @@ Everything lives in `src/` (headers and sources together); `src/` is the PUBLIC 
 |Path|What|
 |---|---|
 |`src/Observables/`|Reactive primitives: `Subject`, `ReactiveObject`, `TrackedValue`, `GenericSubscription` (RAII token), adaptors `Transform`, `Window`, `CombineLatest`; `Observable` concept and `operator\|`.|
-|`src/TaskScheduler.{h,cpp}`|Process-wide delayed/interval task queue; consumer must call `TaskScheduler::Instance().Tick()` (e.g. from a frame hook). The only `.cpp` in the library.|
-|`src/Utilities.h`|`Debounce`, `WaitFor` (both on top of `TaskScheduler`), `NearlyEqualComparer`, `SafeRange`, actor active-effect / equipped-item views, `ChangeGlobalAtomic`.|
+|`src/TaskScheduler.h`|`TaskScheduler<TTimestamp>` (default `steady_clock::time_point`) delayed/interval task queue. No singleton: consumer owns instances (non-movable), constructs with an initial timestamp and calls `Tick(now)` (e.g. from a frame hook). Delays are added to the last ticked timestamp, so same-delay tasks scheduled within one frame fire on the same tick.|
+|`src/Utilities.h`|`Debounce`, `WaitFor` (take a `TaskScheduler<T>&`), `NearlyEqualComparer`, `SafeRange`, actor active-effect / equipped-item views, `ChangeGlobalAtomic`.|
 |`src/TESLookup.h`|`LookupByEditorId` / `LookupByFormId` / `LookupByAbsoluteFormId` with mandatory `throwOnError`; debug builds warn on duplicate lookups.|
 |`src/ResourceLock.h`|Mutex-guarded value with `Acquire()` lock handles.|
 |`src/PointerLinkedList.h`|Range/iterator view over intrusive `next`-pointer lists.|
@@ -37,19 +37,19 @@ target_link_libraries(MyPlugin PRIVATE SKSEHelpers::SKSEHelpers)
 ## Commands (PowerShell, repo root; needs `VCPKG_ROOT`)
 ```powershell
 cmake --preset default -DCOMMONLIB_PATH=C:/work/CommonLibSSE-NG   # VS 2026 (v145), x64-windows-static, /MT
-cmake --build --preset release --target SKSEHelpers                # or --preset debug
+cmake --build --preset release --target SKSEHelpersHeaderChecks    # or --preset debug
 .\Format-Code.ps1            # clang-format src/ in place
 .\Format-Code.ps1 -Check     # report unformatted files, exit 1 on violations
 ```
 Sources are globbed with `CONFIGURE_DEPENDS`; re-run configure if a new file is not picked up.
 
 ## Build Rules
-- Warnings: `/Wall /WX` (PRIVATE), `/external:anglebrackets /external:W0` so only this repo's files are diagnosed; librarian `/WX`. Code MUST build with zero warnings. Never silence with pragmas or by dropping flags; fix the code.
+- Warnings: `/Wall /WX`, `/external:anglebrackets /external:W0` on the `SKSEHelpersHeaderChecks` target so only this repo's files are diagnosed. Code MUST build with zero warnings. Never silence with pragmas or by dropping flags; fix the code.
 - Because of `/external:anglebrackets`, include this repo's headers with **quotes** and third-party/STL/CommonLib with **angle brackets**. No `..` in include paths (C4464); resolve from `src/`, e.g. `"Hooks/Hooks.h"`.
-- `SKSEHELPERS_HEADER_CHECKS` (default ON when top-level) compiles every header in its own TU under these flags. Each header MUST be self-contained: include every STL/CommonLib header it uses; never rely on a consumer PCH or aliases such as `logger::` (use `SKSE::log::`).
+- `SKSEHELPERS_HEADER_CHECKS` (default ON when top-level) adds the `SKSEHelpersHeaderChecks` OBJECT target that compiles every header in its own TU under these flags. Each header MUST be self-contained: include every STL/CommonLib header it uses; never rely on a consumer PCH or aliases such as `logger::` (use `SKSE::log::`).
 - Templates are only diagnosed when instantiated; header checks don't cover template bodies. When changing templates, instantiate them in a throwaway consumer built with `/Wall /WX` (see Verification).
-- PUBLIC compile definitions `NOMINMAX` and `WIN32_LEAN_AND_MEAN` exist because `Hooks/Hooks.h` includes `MinHook.h` (→ `<Windows.h>`). CommonLib headers (`<RE/Skyrim.h>`, `<SKSE/SKSE.h>`) MUST be included before `MinHook.h`/`<Windows.h>`. Do not include `<REL/REL.h>` directly; it is not self-contained (get it via `<SKSE/SKSE.h>`).
-- Only `TaskScheduler.cpp` needs compiling; prefer header-only additions unless a singleton/out-of-line definition is required.
+- INTERFACE compile definitions `NOMINMAX` and `WIN32_LEAN_AND_MEAN` exist because `Hooks/Hooks.h` includes `MinHook.h` (→ `<Windows.h>`). CommonLib headers (`<RE/Skyrim.h>`, `<SKSE/SKSE.h>`) MUST be included before `MinHook.h`/`<Windows.h>`. Do not include `<REL/REL.h>` directly; it is not self-contained (get it via `<SKSE/SKSE.h>`).
+- Header-only: there are no `.cpp` files; keep it that way (use `inline`/function-local statics for out-of-line state).
 
 ## Code Conventions
 - C++23, MSVC only, Windows x64. SE/AE/VR multi-targeting comes from CommonLib (`REL::RelocationID`, `REL::VariantOffset`).
@@ -61,7 +61,7 @@ Sources are globbed with `CONFIGURE_DEPENDS`; re-run configure if a new file is 
 
 ## Verification
 No unit-test suite. Before finishing a change:
-1. `cmake --build --preset release --target SKSEHelpers` with zero warnings (header checks included).
+1. `cmake --build --preset release --target SKSEHelpersHeaderChecks` with zero warnings.
 2. For template/API changes: throwaway consumer project (outside the repo) that `add_subdirectory`s this repo with `-DCOMMONLIB_PATH=...`, builds a `SHARED` target with `/utf-8 /Wall /WX /permissive- /external:anglebrackets /external:W0`, includes the touched headers and instantiates the changed templates. Delete it afterwards.
 3. `.\Format-Code.ps1 -Check` for touched files.
 Runtime behavior (hooks, scheduler, lookups) can only be verified in-game by a consumer plugin; list what to check.

@@ -48,14 +48,35 @@ find_package(minhook CONFIG REQUIRED)
 
 # ---- Library ----
 
+# Header-only: an INTERFACE library carrying include path, dependencies and definitions.
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+
+add_library(${PROJECT_NAME} INTERFACE)
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+target_include_directories(${PROJECT_NAME} INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_23)
+
+target_link_libraries(
+	${PROJECT_NAME}
+	INTERFACE
+		CommonLibSSE::CommonLibSSE
+		minhook::minhook
+)
+
+# Hooks/Hooks.h includes MinHook.h, which pulls in <Windows.h>; keep its min/max and extra headers out of consumers.
+target_compile_definitions(
+	${PROJECT_NAME}
+	INTERFACE
+		NOMINMAX
+		WIN32_LEAN_AND_MEAN
+)
 
 # Headers are only compiled by consumers, so compile each one on its own here as well; this keeps every header
-# self-contained and subject to this target's warning flags. Enabled by default only for standalone builds.
+# self-contained and subject to the warning flags below. Enabled by default only for standalone builds.
 option(SKSEHELPERS_HEADER_CHECKS "Compile every header in its own translation unit." ${PROJECT_IS_TOP_LEVEL})
-set(HEADER_CHECK_SOURCES)
 if (SKSEHELPERS_HEADER_CHECKS)
+	set(HEADER_CHECK_SOURCES)
 	foreach (header IN LISTS HEADERS)
 		file(RELATIVE_PATH header_rel "${CMAKE_CURRENT_SOURCE_DIR}/src" "${header}")
 		string(MAKE_C_IDENTIFIER "${header_rel}" header_id)
@@ -64,44 +85,23 @@ if (SKSEHELPERS_HEADER_CHECKS)
 		list(APPEND HEADER_CHECK_SOURCES "${header_check}")
 	endforeach ()
 	source_group("Header Checks" FILES ${HEADER_CHECK_SOURCES})
-endif ()
+	source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${HEADERS})
 
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${HEADERS} ${SOURCES})
+	add_library(${PROJECT_NAME}HeaderChecks OBJECT ${HEADER_CHECK_SOURCES} ${HEADERS} .clang-format .editorconfig)
+	target_link_libraries(${PROJECT_NAME}HeaderChecks PRIVATE ${PROJECT_NAME})
 
-add_library(${PROJECT_NAME} STATIC ${HEADERS} ${SOURCES} ${HEADER_CHECK_SOURCES} .clang-format .editorconfig)
-add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
-
-target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-
-target_link_libraries(
-	${PROJECT_NAME}
-	PUBLIC
-		CommonLibSSE::CommonLibSSE
-		minhook::minhook
-)
-
-# Hooks/Hooks.h includes MinHook.h, which pulls in <Windows.h>; keep its min/max and extra headers out of consumers.
-target_compile_definitions(
-	${PROJECT_NAME}
-	PUBLIC
-		NOMINMAX
-		WIN32_LEAN_AND_MEAN
-)
-
-# Every warning is enabled and fatal for this library's code. Angle-bracket includes (STL, CommonLib, MinHook,
-# Windows SDK) are treated as external and silenced, so only warnings from SKSEHelpers' own files are reported.
-if (MSVC)
-	target_compile_options(
-		${PROJECT_NAME}
-		PRIVATE
-			/utf-8
-			/permissive-
-			/Wall
-			/WX
-			/external:anglebrackets
-			/external:W0
-	)
-	set_target_properties(${PROJECT_NAME} PROPERTIES STATIC_LIBRARY_OPTIONS /WX)
+	# Every warning is enabled and fatal for this library's code. Angle-bracket includes (STL, CommonLib, MinHook,
+	# Windows SDK) are treated as external and silenced, so only warnings from SKSEHelpers' own files are reported.
+	if (MSVC)
+		target_compile_options(
+			${PROJECT_NAME}HeaderChecks
+			PRIVATE
+				/utf-8
+				/permissive-
+				/Wall
+				/WX
+				/external:anglebrackets
+				/external:W0
+		)
+	endif ()
 endif ()
