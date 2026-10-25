@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "skse-helpers",
+  "version-semver": "1.0.0",
+  "description": "Shared helpers for SKSE plugins built on CommonLibSSE-NG.",
+  "dependencies": [
+    "directxmath",
+    "directxtk",
+    "fmt",
+    "minhook",
+    "rapidcsv",
+    "spdlog"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "default",
+      "generator": "Visual Studio 18 2026",
+      "toolset": "v145",
+      "binaryDir": "${sourceDir}/build",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>",
+        "CMAKE_CXX_FLAGS": "/EHsc /MP $penv{CXXFLAGS}"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "release",
+      "configurePreset": "default",
+      "configuration": "Release"
+    },
+    {
+      "name": "debug",
+      "configurePreset": "default",
+      "configuration": "Debug"
+    }
+  ]
+}
