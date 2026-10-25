@@ -22,7 +22,7 @@ public:
 	template <class TWrap>
 	auto Wrap(TWrap&& wrap) &&
 	{
-		return CallPipeline<std::decay_t<TWrap>, CallPipeline>(std::forward<TWrap>(wrap), std::move(*this));
+		return CallPipeline<std::decay_t<TWrap>, CallPipeline>(std::decay_t<TWrap>(std::forward<TWrap>(wrap)), std::move(*this));
 	}
 
 	template <class... TArgs>
@@ -54,7 +54,7 @@ public:
 	template <class TWrap>
 	auto Wrap(TWrap&& wrap) &&
 	{
-		return CallPipeline<std::decay_t<TWrap>, Action>(std::forward<TWrap>(wrap), std::move(_action));
+		return CallPipeline<std::decay_t<TWrap>, Action>(std::decay_t<TWrap>(std::forward<TWrap>(wrap)), std::move(_action));
 	}
 
 	template <class... TArgs>

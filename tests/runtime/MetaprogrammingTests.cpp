@@ -66,6 +66,14 @@ TEST_CASE("CallPipeline forwards references", "[CallPipeline]")
 	CHECK(value == 7);
 }
 
+TEST_CASE("CallPipeline copies lvalue wrappers", "[CallPipeline]")
+{
+	const auto addOne = [](const auto& next, int value) { return next(value) + 1; };
+	auto pipeline = StartCallPipeline([](int value) { return value; }).Wrap(addOne).Wrap(addOne);
+
+	CHECK(pipeline(1) == 3);
+}
+
 TEST_CASE("Match dispatches on the active alternative", "[VariantUtils]")
 {
 	using Value = std::variant<int, std::string>;
