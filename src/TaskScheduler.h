@@ -108,6 +108,7 @@ public:
 	}
 
 	template <std::invocable TFunc>
+	[[nodiscard]]
 	IntervalSubscription ScheduleInterval(TFunc&& action, Duration interval)
 	{
 		const Observables::SubscriptionId id = _nextIntervalId++;
