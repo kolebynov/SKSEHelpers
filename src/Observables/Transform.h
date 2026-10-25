@@ -26,8 +26,8 @@ namespace Observables::_Detail
 
 		/// Создаёт преобразующий observable поверх источника и функции преобразования.
 		TransformObservable(TObservable&& observable, TMapper&& mapper) :
-			_observable(std::forward<TObservable>(observable)),
-			_mapper(std::forward<TMapper>(mapper)) {}
+			_observable(std::forward<TObservable>(observable)), _mapper(std::forward<TMapper>(mapper))
+		{}
 
 		/// Подписывает наблюдателя на преобразованные значения.
 		template <std::invocable<Item> TObserver>
@@ -35,9 +35,8 @@ namespace Observables::_Detail
 		Subscription Subscribe(TObserver&& observer)
 		{
 			auto mapper = _mapper;
-			return _observable.Subscribe([mapper, observer = std::forward<TObserver>(observer)](SourceItem item) {
-				std::invoke(observer, std::invoke(mapper, item));
-			});
+			return _observable.Subscribe([mapper, observer = std::forward<TObserver>(observer)](
+											 SourceItem item) { std::invoke(observer, std::invoke(mapper, item)); });
 		}
 
 	private:
@@ -51,25 +50,21 @@ namespace Observables::_Detail
 	{
 	public:
 		/// Создаёт адаптер с указанной функцией преобразования.
-		explicit TransformAdaptor(TMapper&& mapper) :
-			_mapper(std::forward<TMapper>(mapper)) {}
+		explicit TransformAdaptor(TMapper&& mapper) : _mapper(std::forward<TMapper>(mapper)) {}
 
 		/// Применяет перемещаемый адаптер к observable.
 		template <Observable TObservable>
 		auto operator()(TObservable&& observable) &&
 		{
-			return TransformObservable<TObservable, TMapper>(
-				std::forward<TObservable>(observable),
+			return TransformObservable<TObservable, TMapper>(std::forward<TObservable>(observable),
 				std::forward<TMapper>(_mapper));
 		}
 
 		/// Применяет копируемый адаптер к observable.
 		template <Observable TObservable>
-		auto operator()(TObservable&& observable) const &
+		auto operator()(TObservable&& observable) const&
 		{
-			return TransformObservable<TObservable, TMapper>(
-				std::forward<TObservable>(observable),
-				_mapper);
+			return TransformObservable<TObservable, TMapper>(std::forward<TObservable>(observable), _mapper);
 		}
 
 	private:

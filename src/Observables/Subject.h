@@ -37,8 +37,7 @@ namespace Observables
 		{
 			if (_isNotifying) {
 				_observers[id].IsUnsubscribed = true;
-			}
-			else {
+			} else {
 				_observers.erase(id);
 			}
 		}
@@ -52,7 +51,7 @@ namespace Observables
 		Subscription Subscribe(TObserver&& observer)
 		{
 			const SubscriptionId id = _nextId++;
-			_observers.emplace(id, SubscriptionData { .Observer = std::forward<TObserver>(observer) });
+			_observers.emplace(id, SubscriptionData{ .Observer = std::forward<TObserver>(observer) });
 			return Subscription{ this, id };
 		}
 
@@ -62,7 +61,7 @@ namespace Observables
 		Subscription SubscribeAndNotify(TObserver&& observer, Item arg)
 		{
 			const SubscriptionId id = _nextId++;
-			_observers.emplace(id, SubscriptionData { .Observer = std::forward<TObserver>(observer) });
+			_observers.emplace(id, SubscriptionData{ .Observer = std::forward<TObserver>(observer) });
 			_observers[id].Observer(arg);
 			return Subscription{ this, id };
 		}

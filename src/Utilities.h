@@ -19,10 +19,7 @@
 template <std::floating_point T, T Epsilon = static_cast<T>(0.1)>
 struct NearlyEqualComparer
 {
-	bool operator()(const T& a, const T& b) const
-	{
-		return std::abs(a - b) < Epsilon;
-	}
+	bool operator()(const T& a, const T& b) const { return std::abs(a - b) < Epsilon; }
 };
 
 template <class TFunc>
@@ -36,27 +33,28 @@ auto Debounce(TFunc&& func, std::chrono::milliseconds delay)
 		// Debounced work runs later, so capture a snapshot of the call arguments now.
 		auto scheduledArgs = std::make_unique<std::tuple<std::decay_t<TCallArgs>...>>(std::forward<TCallArgs>(args)...);
 
-		TaskScheduler::Instance().Schedule([func, counter, tag, scheduledArgs = std::move(scheduledArgs)]() mutable {
-			if (counter->load(std::memory_order_relaxed) != tag) {
-				return;
-			}
+		TaskScheduler::Instance().Schedule(
+			[func, counter, tag, scheduledArgs = std::move(scheduledArgs)]() mutable {
+				if (counter->load(std::memory_order_relaxed) != tag) {
+					return;
+				}
 
-			std::apply(
-				[&func]<typename... TArgs>(TArgs&&... storedArgs) {
-					std::invoke(*func, std::forward<TArgs>(storedArgs)...);
-				},
-				*scheduledArgs);
-		}, delay);
+				std::apply(
+					[&func]<typename... TArgs>(TArgs&&... storedArgs) { std::invoke(*func, std::forward<TArgs>(storedArgs)...); },
+					*scheduledArgs);
+			},
+			delay);
 	};
 }
 
 template <std::invocable TPredicate, std::invocable TContinuation>
-requires std::same_as<bool, std::invoke_result_t<TPredicate>>
+	requires std::same_as<bool, std::invoke_result_t<TPredicate>>
 void WaitFor(TPredicate&& predicate, TContinuation&& continuation, std::chrono::milliseconds checkInterval)
 {
 	auto subPtr = std::make_shared<TaskScheduler::IntervalSubscription>();
 	*subPtr = TaskScheduler::Instance().ScheduleInterval(
-		[predicate = std::forward<TPredicate>(predicate), continuation = std::forward<TContinuation>(continuation), subPtr] mutable {
+		[predicate = std::forward<TPredicate>(predicate), continuation = std::forward<TContinuation>(continuation),
+			subPtr] mutable {
 			if (std::invoke(predicate)) {
 				std::invoke(continuation);
 				subPtr.reset();
@@ -66,7 +64,8 @@ void WaitFor(TPredicate&& predicate, TContinuation&& continuation, std::chrono::
 }
 
 template <std::ranges::range T>
-auto SafeRange(T* ptr) {
+auto SafeRange(T* ptr)
+{
 	using ContainerType = std::decay_t<T>;
 
 	[[likely]]
@@ -77,10 +76,7 @@ auto SafeRange(T* ptr) {
 	return std::ranges::subrange(typename ContainerType::iterator{}, typename ContainerType::iterator{});
 }
 
-inline bool IsActive(const RE::ActiveEffect* ef)
-{
-	return ef && !ef->flags.any(RE::ActiveEffect::Flag::kInactive);
-}
+inline bool IsActive(const RE::ActiveEffect* ef) { return ef && !ef->flags.any(RE::ActiveEffect::Flag::kInactive); }
 
 inline auto GetActorActiveEffects(RE::Actor& actor)
 {
@@ -90,7 +86,8 @@ inline auto GetActorActiveEffects(RE::Actor& actor)
 struct TruePredicate
 {
 	template <class... TArgs>
-	constexpr bool operator()(TArgs&&...) const noexcept {
+	constexpr bool operator()(TArgs&&...) const noexcept
+	{
 		return true;
 	}
 };
@@ -98,15 +95,11 @@ struct TruePredicate
 template <std::invocable<const RE::TESBoundObject&> TFilter = TruePredicate>
 auto GetEquippedItems(RE::Actor& actor, TFilter&& filter = TruePredicate{})
 {
-	return actor.GetInventory(std::forward<TFilter>(filter), false)
-		| std::views::filter([](const auto& pair) {
-			const auto& [_, invData] = pair;
-			const auto& [count, entry] = invData;
-			return count > 0 && entry->object && entry->IsWorn();
-		})
-		| std::views::transform([](auto& pair) {
-			return std::move(pair.second.second);
-		});
+	return actor.GetInventory(std::forward<TFilter>(filter), false) | std::views::filter([](const auto& pair) {
+		const auto& [_, invData] = pair;
+		const auto& [count, entry] = invData;
+		return count > 0 && entry->object && entry->IsWorn();
+	}) | std::views::transform([](auto& pair) { return std::move(pair.second.second); });
 }
 
 inline void DispelByAdjustElapsedTime(RE::ActiveEffect* activeEffect)

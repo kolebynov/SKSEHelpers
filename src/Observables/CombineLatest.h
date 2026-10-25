@@ -15,7 +15,7 @@ namespace Observables::_Detail
 {
 	/// Observable, отправляющий кортеж последних значений после инициализации всех источников.
 	template <Observable... TObservables>
-		requires (sizeof...(TObservables) > 0)
+		requires(sizeof...(TObservables) > 0)
 	class CombineLatestObservable
 	{
 	public:
@@ -41,10 +41,8 @@ namespace Observables::_Detail
 		public:
 			/// Создаёт токен из подписок источников и общего состояния последних значений.
 			Subscription(Subscriptions&& subscriptions, std::unique_ptr<SubscriptionData>&& subscriptionData) :
-				_subscriptionData(std::move(subscriptionData)),
-				_subscriptions(std::move(subscriptions))
-			{
-			}
+				_subscriptionData(std::move(subscriptionData)), _subscriptions(std::move(subscriptions))
+			{}
 
 			Subscription(const Subscription&) = delete;
 			Subscription& operator=(const Subscription&) = delete;
@@ -64,10 +62,7 @@ namespace Observables::_Detail
 		};
 
 		/// Создаёт CombineLatest поверх набора исходных observable.
-		CombineLatestObservable(TObservables&&... observables) :
-			_observables(std::forward<TObservables>(observables)...)
-		{
-		}
+		CombineLatestObservable(TObservables&&... observables) : _observables(std::forward<TObservables>(observables)...) {}
 
 		/// Подписывает наблюдателя на кортеж последних значений всех источников.
 		template <std::invocable<Item> TObserver>
@@ -78,22 +73,23 @@ namespace Observables::_Detail
 			auto observerPtr = std::make_shared<std::decay_t<TObserver>>(std::forward<TObserver>(observer));
 
 			Subscriptions subscriptions = [&, observerPtr]<std::size_t... Is>(std::index_sequence<Is...>) {
-				return Subscriptions{ std::get<Is>(_observables).Subscribe([observerPtr, subscriptionData = subscriptionData.get()](auto item) {
-					std::get<Is>(subscriptionData->LastValues) = item;
-					if (subscriptionData->AllInitialized) {
-						std::invoke(*observerPtr, subscriptionData->LastValues);
-						return;
-					}
+				return Subscriptions{
+					std::get<Is>(_observables).Subscribe([observerPtr, subscriptionData = subscriptionData.get()](auto item) {
+						std::get<Is>(subscriptionData->LastValues) = item;
+						if (subscriptionData->AllInitialized) {
+							std::invoke(*observerPtr, subscriptionData->LastValues);
+							return;
+						}
 
-					std::get<Is>(subscriptionData->ValueInitializationStatuses) = true;
-					subscriptionData->AllInitialized = std::apply(
-						[](auto&&... status) { return (status && ...); },
-						subscriptionData->ValueInitializationStatuses);
+						std::get<Is>(subscriptionData->ValueInitializationStatuses) = true;
+						subscriptionData->AllInitialized = std::apply([](auto&&... status) { return (status && ...); },
+							subscriptionData->ValueInitializationStatuses);
 
-					if (subscriptionData->AllInitialized) {
-						std::invoke(*observerPtr, subscriptionData->LastValues);
-					}
-				})... };
+						if (subscriptionData->AllInitialized) {
+							std::invoke(*observerPtr, subscriptionData->LastValues);
+						}
+					})...
+				};
 			}(std::make_index_sequence<std::tuple_size_v<LastValues>>{});
 
 			return Subscription(std::move(subscriptions), std::move(subscriptionData));
@@ -108,7 +104,7 @@ namespace Observables
 {
 	/// Объединяет несколько observable и отправляет последние значения после обновления любого источника.
 	template <Observable... TObservables>
-		requires (sizeof...(TObservables) > 0)
+		requires(sizeof...(TObservables) > 0)
 	static auto CombineLatest(TObservables&&... observables)
 	{
 		return _Detail::CombineLatestObservable<TObservables...>(std::forward<TObservables>(observables)...);

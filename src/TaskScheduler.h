@@ -50,13 +50,13 @@ public:
 private:
 	struct Task
 	{
-		std::move_only_function<void ()> Action;
+		std::move_only_function<void()> Action;
 		std::chrono::steady_clock::time_point InvokeTimestamp;
 	};
 
 	struct IntervalTask
 	{
-		std::move_only_function<void ()> Action;
+		std::move_only_function<void()> Action;
 		std::chrono::steady_clock::time_point InvokeTimestamp;
 		std::chrono::milliseconds Interval;
 		Observables::SubscriptionId TaskId;

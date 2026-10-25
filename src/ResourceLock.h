@@ -6,11 +6,13 @@
 #include <utility>
 
 template <class T>
-class ResourceLock {
+class ResourceLock
+{
 public:
 	// TValue carries the constness of the ResourceLock the lock was acquired from.
 	template <class TValue>
-	class BasicLock {
+	class BasicLock
+	{
 	public:
 		BasicLock(std::mutex& mutex, TValue& value) : guard_(mutex), value_(&value) {}
 
@@ -31,7 +33,8 @@ public:
 
 	template <class... TArgs>
 		requires std::constructible_from<T, TArgs...>
-	explicit ResourceLock(std::in_place_t, TArgs&&... args) : value_(std::forward<TArgs>(args)...) {}
+	explicit ResourceLock(std::in_place_t, TArgs&&... args) : value_(std::forward<TArgs>(args)...)
+	{}
 
 	Lock Acquire() { return Lock(mutex_, value_); }
 	ConstLock Acquire() const { return ConstLock(mutex_, value_); }

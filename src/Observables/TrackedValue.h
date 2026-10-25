@@ -10,7 +10,7 @@ namespace Observables
 	/// Хранит текущее и предыдущее значение, чтобы определить изменение через comparer.
 	template <class T, class TComparer = std::equal_to<T>>
 		requires std::invocable<TComparer, const T&, const T&> &&
-				 std::same_as<std::invoke_result_t<TComparer, const T&, const T&>, bool>
+	             std::same_as<std::invoke_result_t<TComparer, const T&, const T&>, bool>
 	struct TrackedValue
 	{
 	public:

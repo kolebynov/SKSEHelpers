@@ -11,8 +11,7 @@ namespace Observables
 
 	/// Требование к владельцу подписок, который умеет отписывать наблюдателя по идентификатору.
 	template <typename TOwner>
-	concept SubscriptionOwner = requires(TOwner* owner)
-	{
+	concept SubscriptionOwner = requires(TOwner* owner) {
 		{ owner->Unsubscribe(SubscriptionId{}) } -> std::same_as<void>;
 	};
 
@@ -26,16 +25,17 @@ namespace Observables
 
 		/// Создаёт токен для подписки с указанным владельцем и идентификатором.
 		GenericSubscription(TOwner* owner, SubscriptionId id) noexcept
-			requires SubscriptionOwner<TOwner> :
-			_owner(owner), _id(id) {}
+			requires SubscriptionOwner<TOwner>
+			: _owner(owner), _id(id)
+		{}
 
 		GenericSubscription(const GenericSubscription&) = delete;
 		GenericSubscription& operator=(const GenericSubscription&) = delete;
 
 		/// Передаёт владение подпиской из другого токена.
 		GenericSubscription(GenericSubscription&& other) noexcept :
-			_owner(std::exchange(other._owner, nullptr)),
-			_id(std::exchange(other._id, 0)) {}
+			_owner(std::exchange(other._owner, nullptr)), _id(std::exchange(other._id, 0))
+		{}
 
 		/// Отписывает текущую подписку и принимает владение другой.
 		GenericSubscription& operator=(GenericSubscription&& other) noexcept
@@ -50,10 +50,7 @@ namespace Observables
 		}
 
 		/// Автоматически отписывает наблюдателя, если токен всё ещё владеет подпиской.
-		~GenericSubscription()
-		{
-			Reset();
-		}
+		~GenericSubscription() { Reset(); }
 
 		/// Отсоединяет токен от подписки, оставляя наблюдателя подписанным у владельца.
 		void Detach() && noexcept

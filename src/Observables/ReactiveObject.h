@@ -13,8 +13,7 @@ namespace Observables
 	/// Реактивное значение, уведомляющее подписчиков только при изменении по comparer.
 	template <class T, class TComparer = std::equal_to<T>>
 		requires std::invocable<TComparer, const T&, const T&> &&
-				 std::same_as<std::invoke_result_t<TComparer, const T&, const T&>, bool> &&
-				 std::same_as<T, std::decay_t<T>>
+	             std::same_as<std::invoke_result_t<TComparer, const T&, const T&>, bool> && std::same_as<T, std::decay_t<T>>
 	class ReactiveObject
 	{
 	public:
@@ -24,10 +23,7 @@ namespace Observables
 		using Subscription = Subject<Item>::Subscription;
 
 		/// Создаёт реактивное значение с пользовательским или стандартным сравнением.
-		ReactiveObject(T value, TComparer comparer = {})
-			: _value(value, comparer)
-		{
-		}
+		ReactiveObject(T value, TComparer comparer = {}) : _value(value, comparer) {}
 
 		ReactiveObject(const ReactiveObject&) = delete;
 		ReactiveObject& operator=(const ReactiveObject&) = delete;
@@ -59,9 +55,8 @@ namespace Observables
 		[[nodiscard]]
 		auto Subscribe(TObserver&& observer, bool notifyCurrentValue = false)
 		{
-			return !notifyCurrentValue
-				? _subject.Subscribe(std::forward<TObserver>(observer))
-				: _subject.SubscribeAndNotify(std::forward<TObserver>(observer), _value.Get());
+			return !notifyCurrentValue ? _subject.Subscribe(std::forward<TObserver>(observer)) :
+			                             _subject.SubscribeAndNotify(std::forward<TObserver>(observer), _value.Get());
 		}
 
 		/// Адаптер, превращающий ReactiveObject в observable с уведомлением текущим значением при подписке.
@@ -74,8 +69,7 @@ namespace Observables
 			using Subscription = Subscription;
 
 			/// Создаёт адаптер для указанного реактивного значения.
-			explicit NotifiedOnSubscribe(ReactiveObject& reactiveObject) noexcept :
-				_reactiveObject(reactiveObject) {}
+			explicit NotifiedOnSubscribe(ReactiveObject& reactiveObject) noexcept : _reactiveObject(reactiveObject) {}
 
 			/// Подписывает наблюдателя и сразу отправляет ему текущее значение.
 			template <std::invocable<Item> TObserver>
@@ -90,10 +84,7 @@ namespace Observables
 		};
 
 		/// Возвращает адаптер подписки с немедленным уведомлением текущим значением.
-		NotifiedOnSubscribe ToNotifyOnSubscribe() &
-		{
-			return NotifiedOnSubscribe(*this);
-		}
+		NotifiedOnSubscribe ToNotifyOnSubscribe() & { return NotifiedOnSubscribe(*this); }
 
 	private:
 		Subject<Item> _subject{};

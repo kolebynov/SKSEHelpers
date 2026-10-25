@@ -16,7 +16,7 @@ namespace Observables::_Detail
 	/// Окно сдвигается на один элемент, поэтому уведомление приходит на каждое значение после заполнения окна.
 	/// Окно меньше двух элементов не имеет смысла: оно эквивалентно исходному потоку.
 	template <Observable TObservable, std::uint32_t TWindow>
-	requires (TWindow > 1)
+		requires(TWindow > 1)
 	class WindowObservable
 	{
 	public:
@@ -28,37 +28,36 @@ namespace Observables::_Detail
 		using SourceItemValue = std::decay_t<SourceItem>;
 		static_assert(std::default_initializable<SourceItemValue>,
 			"Source item must be default initializable to preallocate the window");
-		static_assert(std::assignable_from<SourceItemValue&, SourceItem>,
-			"Source item must be assignable into the window");
+		static_assert(std::assignable_from<SourceItemValue&, SourceItem>, "Source item must be assignable into the window");
 		/// Тип значения, передаваемого наблюдателям: ссылка на окно от самого старого значения к самому новому.
 		using Item = const std::array<SourceItemValue, TWindow>&;
 		/// Токен подписки исходного observable.
 		using Subscription = Source::Subscription;
 
 		/// Создаёт скользящее окно поверх источника.
-		WindowObservable(TObservable&& observable) :
-			_observable(std::forward<TObservable>(observable)) {}
+		WindowObservable(TObservable&& observable) : _observable(std::forward<TObservable>(observable)) {}
 
 		/// Подписывает наблюдателя на окна значений; первые TWindow - 1 значений только заполняют окно.
 		template <std::invocable<Item> TObserver>
 		[[nodiscard]]
 		Subscription Subscribe(TObserver&& observer)
 		{
-			return _observable.Subscribe([observer = std::forward<TObserver>(observer), state = SubscriptionState{}](SourceItem item) mutable {
-				if (state.FilledCount < TWindow) [[unlikely]] {
-					state.Window[state.FilledCount] = item;
-					++state.FilledCount;
-					if (state.FilledCount == TWindow) {
-						std::invoke(observer, state.Window);
+			return _observable.Subscribe(
+				[observer = std::forward<TObserver>(observer), state = SubscriptionState{}](SourceItem item) mutable {
+					if (state.FilledCount < TWindow) [[unlikely]] {
+						state.Window[state.FilledCount] = item;
+						++state.FilledCount;
+						if (state.FilledCount == TWindow) {
+							std::invoke(observer, state.Window);
+						}
+
+						return;
 					}
 
-					return;
-				}
-
-				std::ranges::shift_left(state.Window, 1);
-				state.Window[TWindow - 1] = item;
-				std::invoke(observer, state.Window);
-			});
+					std::ranges::shift_left(state.Window, 1);
+					state.Window[TWindow - 1] = item;
+					std::invoke(observer, state.Window);
+				});
 		}
 
 	private:

@@ -13,7 +13,7 @@
 #include <utility>
 
 #ifndef NDEBUG
-#include <unordered_set>
+#	include <unordered_set>
 #endif
 
 namespace TESLookup
@@ -38,7 +38,7 @@ namespace TESLookup
 #endif
 
 	template <class T = RE::TESForm>
-	requires std::same_as<T, std::decay_t<T>>
+		requires std::same_as<T, std::decay_t<T>>
 	T* LookupByEditorId(const std::string_view& editorId, bool throwOnError)
 	{
 #ifndef NDEBUG
@@ -63,7 +63,7 @@ namespace TESLookup
 	}
 
 	template <class T = RE::TESForm>
-	requires std::same_as<T, std::decay_t<T>>
+		requires std::same_as<T, std::decay_t<T>>
 	T* LookupByFormId(RE::FormID formId, std::string_view modName, bool throwOnError)
 	{
 #ifndef NDEBUG
@@ -88,7 +88,7 @@ namespace TESLookup
 	}
 
 	template <class T = RE::TESForm>
-	requires std::same_as<T, std::decay_t<T>>
+		requires std::same_as<T, std::decay_t<T>>
 	T* LookupByAbsoluteFormId(RE::FormID formId, bool throwOnError)
 	{
 #ifndef NDEBUG
