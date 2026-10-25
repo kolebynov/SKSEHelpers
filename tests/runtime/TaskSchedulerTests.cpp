@@ -9,7 +9,7 @@
 #include <optional>
 #include <vector>
 
-// A frame counter keeps the tests deterministic: the scheduler only sees timestamps passed to Tick().
+// A frame counter keeps the tests deterministic: the scheduler only sees times passed to Tick().
 using Scheduler = TaskScheduler<std::uint64_t>;
 
 TEST_CASE("Schedule runs a task once when its delay has elapsed", "[TaskScheduler]")
@@ -28,7 +28,7 @@ TEST_CASE("Schedule runs a task once when its delay has elapsed", "[TaskSchedule
 	CHECK(calls == 1);
 }
 
-TEST_CASE("Schedule delays are measured from the last ticked timestamp", "[TaskScheduler]")
+TEST_CASE("Schedule delays are measured from the last ticked time", "[TaskScheduler]")
 {
 	Scheduler scheduler(0);
 	scheduler.Tick(100);
@@ -43,7 +43,7 @@ TEST_CASE("Schedule delays are measured from the last ticked timestamp", "[TaskS
 	CHECK(calls == 1);
 }
 
-TEST_CASE("Tasks due on the same tick run in invoke timestamp order", "[TaskScheduler]")
+TEST_CASE("Tasks due on the same tick run in invoke time order", "[TaskScheduler]")
 {
 	Scheduler scheduler(0);
 	std::vector<int> order;

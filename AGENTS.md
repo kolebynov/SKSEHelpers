@@ -10,7 +10,7 @@ Everything lives in `src/` (headers and sources together); `src/` is the PUBLIC 
 |Path|What|
 |---|---|
 |`src/Observables/`|Reactive primitives: `Subject`, `ReactiveObject`, `TrackedValue`, `GenericSubscription` (RAII token), adaptors `Transform`, `Window`, `CombineLatest`; `Observable` concept and `operator\|`.|
-|`src/TaskScheduler.h`|`TaskScheduler<TTimestamp>` (default `steady_clock::time_point`) delayed/interval task queue. No singleton: consumer owns instances (non-movable), constructs with an initial timestamp and calls `Tick(now)` (e.g. from a frame hook). Delays are added to the last ticked timestamp, so same-delay tasks scheduled within one frame fire on the same tick.|
+|`src/TaskScheduler.h`|`TaskScheduler<TDuration>` (default `steady_clock::duration`) delayed/interval task queue. One type for delays and the current time (duration since a consumer-chosen origin, e.g. `steady_clock::now().time_since_epoch()`); `SchedulerDuration` concept. No singleton: consumer owns instances (non-movable), constructs with an initial time and calls `Tick(now)` (e.g. from a frame hook). Delays are added to the last ticked time, so same-delay tasks scheduled within one frame fire on the same tick.|
 |`src/SchedulerUtilities.h`|`Debounce`, `WaitFor` (take a `TaskScheduler<T>&`). No CommonLib.|
 |`src/GenericUtilities.h`|`NearlyEqualComparer`, `SafeRange`, `TruePredicate`. No CommonLib.|
 |`src/Utilities.h`|Game helpers: `IsActive`, actor active-effect / equipped-item views, `DispelByAdjustElapsedTime`, `ChangeGlobalAtomic`.|
@@ -68,7 +68,7 @@ Sources are globbed with `CONFIGURE_DEPENDS`; re-run configure if a new file is 
 ## Verification
 Before finishing a change:
 1. `cmake --build --preset release` with zero warnings (header checks, compile tests, unit tests).
-2. `ctest --preset release` passes. Behavior changes to CommonLib-free headers need a Catch2 test in `tests/runtime/` (one file per header area, deterministic: drive `TaskScheduler` with `std::uint64_t` timestamps and explicit `Tick`). Changes to `HookDefinition` concepts go in `tests/compile/`.
+2. `ctest --preset release` passes. Behavior changes to CommonLib-free headers need a Catch2 test in `tests/runtime/` (one file per header area, deterministic: drive `TaskScheduler` with `std::uint64_t` times and explicit `Tick`). Changes to `HookDefinition` concepts go in `tests/compile/`.
 3. CommonLib-dependent templates not covered by `tests/compile/` (`Utilities.h`, `TESLookup.h`, `HookInstaller.h` instantiation): throwaway consumer project (outside the repo) that `add_subdirectory`s this repo with `-DCOMMONLIB_PATH=...`, builds a `SHARED` target with `/utf-8 /Wall /WX /permissive- /external:anglebrackets /external:W0`, includes the touched headers and instantiates the changed templates. Delete it afterwards.
 4. `.\Format-Code.ps1 -Check`.
 Runtime behavior of game-facing code (hooks, lookups, actor helpers) can only be verified in-game by a consumer plugin; list what to check.

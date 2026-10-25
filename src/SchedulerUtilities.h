@@ -10,8 +10,8 @@
 #include <type_traits>
 #include <utility>
 
-template <SchedulerTimestamp TTimestamp, class TFunc>
-auto Debounce(TaskScheduler<TTimestamp>& scheduler, TFunc&& func, typename TaskScheduler<TTimestamp>::Duration delay)
+template <SchedulerDuration TDuration, class TFunc>
+auto Debounce(TaskScheduler<TDuration>& scheduler, TFunc&& func, std::type_identity_t<TDuration> delay)
 {
 	auto counter = std::make_shared<std::atomic_uint32_t>(0);
 	auto funcShared = std::make_shared<std::decay_t<TFunc>>(std::forward<TFunc>(func));
@@ -36,12 +36,12 @@ auto Debounce(TaskScheduler<TTimestamp>& scheduler, TFunc&& func, typename TaskS
 	};
 }
 
-template <SchedulerTimestamp TTimestamp, std::invocable TPredicate, std::invocable TContinuation>
+template <SchedulerDuration TDuration, std::invocable TPredicate, std::invocable TContinuation>
 	requires std::same_as<bool, std::invoke_result_t<TPredicate>>
-void WaitFor(TaskScheduler<TTimestamp>& scheduler, TPredicate&& predicate, TContinuation&& continuation,
-	typename TaskScheduler<TTimestamp>::Duration checkInterval)
+void WaitFor(TaskScheduler<TDuration>& scheduler, TPredicate&& predicate, TContinuation&& continuation,
+	std::type_identity_t<TDuration> checkInterval)
 {
-	auto subPtr = std::make_shared<typename TaskScheduler<TTimestamp>::IntervalSubscription>();
+	auto subPtr = std::make_shared<typename TaskScheduler<TDuration>::IntervalSubscription>();
 	*subPtr = scheduler.ScheduleInterval(
 		[predicate = std::forward<TPredicate>(predicate), continuation = std::forward<TContinuation>(continuation),
 			subPtr] mutable {

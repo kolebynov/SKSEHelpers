@@ -13,26 +13,27 @@
 #include <utility>
 #include <vector>
 
-// Timestamp usable by TaskScheduler: ordered, trivially copyable (stored atomically), and `timestamp + (timestamp - timestamp)`
-// yields a timestamp again (e.g. std::chrono::time_point, float game seconds, uint64_t frame counters).
+// Duration usable by TaskScheduler: ordered, trivially copyable (stored atomically), and `duration + duration` yields a
+// duration again (e.g. std::chrono::duration, float game seconds, uint64_t frame counts).
 template <typename T>
-concept SchedulerTimestamp = std::totally_ordered<T> && std::is_trivially_copyable_v<T> && requires(const T& timestamp) {
-	{ timestamp + (timestamp - timestamp) } -> std::convertible_to<T>;
+concept SchedulerDuration = std::totally_ordered<T> && std::is_trivially_copyable_v<T> && requires(const T& duration) {
+	{ duration + duration } -> std::convertible_to<T>;
 };
 
-// The scheduler never reads a clock: the consumer supplies the current timestamp through the constructor and Tick().
-// Schedule() and ScheduleInterval() compute invoke timestamps from the timestamp of the last Tick(), so everything scheduled
+// One type for both delays and points in time: the current time is the duration elapsed since an origin chosen by the
+// consumer (e.g. steady_clock::now().time_since_epoch(), game time, frame number).
+// The scheduler never reads a clock: the consumer supplies the current time through the constructor and Tick().
+// Schedule() and ScheduleInterval() compute invoke times from the time of the last Tick(), so everything scheduled
 // between two ticks with the same delay becomes due on the same tick.
 // Non-movable: interval subscriptions keep a pointer to the scheduler.
-template <SchedulerTimestamp TTimestamp = std::chrono::steady_clock::time_point>
+template <SchedulerDuration TDuration = std::chrono::steady_clock::duration>
 class TaskScheduler
 {
 public:
-	using Timestamp = TTimestamp;
-	using Duration = decltype(std::declval<const TTimestamp&>() - std::declval<const TTimestamp&>());
+	using Duration = TDuration;
 	using IntervalSubscription = Observables::GenericSubscription<TaskScheduler>;
 
-	explicit TaskScheduler(TTimestamp initialTimestamp) noexcept : _timestamp(initialTimestamp) {}
+	explicit TaskScheduler(TDuration initialTime) noexcept : _time(initialTime) {}
 
 	TaskScheduler(const TaskScheduler&) = delete;
 	TaskScheduler(TaskScheduler&&) = delete;
@@ -40,16 +41,16 @@ public:
 	TaskScheduler& operator=(TaskScheduler&&) = delete;
 	~TaskScheduler() = default;
 
-	void Tick(TTimestamp timestamp)
+	void Tick(TDuration time)
 	{
-		_timestamp.store(timestamp, std::memory_order_relaxed);
+		_time.store(time, std::memory_order_relaxed);
 
 		// Callbacks routinely schedule more work, so they must never run while a queue lock is held:
 		// std::mutex is not recursive and re-entering Schedule()/ScheduleInterval() would self-deadlock.
 		std::vector<Task> readyTasks;
 		{
 			auto tasks = _tasks.Acquire();
-			while (!tasks->empty() && tasks->top().InvokeTimestamp <= timestamp) {
+			while (!tasks->empty() && tasks->top().InvokeTime <= time) {
 				readyTasks.emplace_back(std::move(const_cast<Task&>(tasks->top())));
 				tasks->pop();
 			}
@@ -62,7 +63,7 @@ public:
 		std::vector<IntervalTask> readyIntervalTasks;
 		{
 			auto intervalTasks = _intervalTasks.Acquire();
-			while (!intervalTasks->empty() && intervalTasks->top().InvokeTimestamp <= timestamp) {
+			while (!intervalTasks->empty() && intervalTasks->top().InvokeTime <= time) {
 				readyIntervalTasks.emplace_back(std::move(const_cast<IntervalTask&>(intervalTasks->top())));
 				intervalTasks->pop();
 			}
@@ -82,8 +83,8 @@ public:
 			}
 
 			// Keep the cadence; if ticks fell behind, skip missed periods instead of firing a burst on following ticks.
-			const TTimestamp next = task.InvokeTimestamp + task.Interval;
-			task.InvokeTimestamp = next > timestamp ? next : static_cast<TTimestamp>(timestamp + task.Interval);
+			const TDuration next = task.InvokeTime + task.Interval;
+			task.InvokeTime = next > time ? next : static_cast<TDuration>(time + task.Interval);
 			repeatingTasks.emplace_back(std::move(task));
 		}
 
@@ -102,7 +103,7 @@ public:
 	{
 		_tasks.Acquire()->emplace(Task{
 			.Action = std::forward<TFunc>(action),
-			.InvokeTimestamp = static_cast<TTimestamp>(_timestamp.load(std::memory_order_relaxed) + delay),
+			.InvokeTime = static_cast<TDuration>(_time.load(std::memory_order_relaxed) + delay),
 		});
 	}
 
@@ -112,7 +113,7 @@ public:
 		const Observables::SubscriptionId id = _nextIntervalId++;
 		_intervalTasks.Acquire()->emplace(IntervalTask{
 			.Action = std::forward<TFunc>(action),
-			.InvokeTimestamp = static_cast<TTimestamp>(_timestamp.load(std::memory_order_relaxed) + interval),
+			.InvokeTime = static_cast<TDuration>(_time.load(std::memory_order_relaxed) + interval),
 			.Interval = interval,
 			.TaskId = id,
 		});
@@ -129,14 +130,14 @@ private:
 	struct Task
 	{
 		std::move_only_function<void()> Action;
-		TTimestamp InvokeTimestamp;
+		TDuration InvokeTime;
 	};
 
 	struct IntervalTask
 	{
 		std::move_only_function<void()> Action;
-		TTimestamp InvokeTimestamp;
-		Duration Interval;
+		TDuration InvokeTime;
+		TDuration Interval;
 		Observables::SubscriptionId TaskId;
 	};
 
@@ -145,7 +146,7 @@ private:
 	{
 		constexpr bool operator()(const TTask& left, const TTask& right) const noexcept
 		{
-			return left.InvokeTimestamp > right.InvokeTimestamp;
+			return left.InvokeTime > right.InvokeTime;
 		}
 	};
 
@@ -166,6 +167,6 @@ private:
 	ResourceLock<std::vector<Observables::SubscriptionId>> _unsubscribedIntervalTasks{};
 	ResourceLock<std::priority_queue<Task, std::vector<Task>, TaskComparer<Task>>> _tasks{};
 	ResourceLock<std::priority_queue<IntervalTask, std::vector<IntervalTask>, TaskComparer<IntervalTask>>> _intervalTasks{};
-	std::atomic<TTimestamp> _timestamp;
+	std::atomic<TDuration> _time;
 	std::atomic<Observables::SubscriptionId> _nextIntervalId = 1;
 };
