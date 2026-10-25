@@ -49,8 +49,10 @@ namespace Hooks
 			using HookFunc =
 				Detail::HookFunc<THook, THandler, typename FunctionTraits<typename THook::FuncDefinition>::Parameters>;
 			if (HookFunc::CallPipeline.has_value()) {
-				SKSE::log::error("Hook {} is already installed", typeid(THook).name());
-				throw std::runtime_error(std::format("Hook {} is already installed", typeid(THook).name()));
+				const auto message =
+					std::format("Hook {} is already installed with handler {}", typeid(THook).name(), typeid(THandler).name());
+				SKSE::log::error("{}", message);
+				throw std::runtime_error(message);
 			}
 
 			auto originalFunc = Hooks::Install<THook>(HookFunc::Invoke);
