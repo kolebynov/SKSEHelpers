@@ -473,6 +473,15 @@ namespace Hooks
 		static constexpr auto Type = HookType::VFunc;
 	};
 
+	// PlayerCharacter::Update (Actor vfunc 0xAD); per-frame player tick, delta is the world frame delta (slow time applied).
+	struct PlayerUpdateHook
+	{
+		using FuncDefinition = void(RE::PlayerCharacter*, float);
+		static constexpr auto VTable = RE::VTABLE_PlayerCharacter[0];
+		static constexpr std::size_t Index = 0xAD;
+		static constexpr auto Type = HookType::VFunc;
+	};
+
 	// PlayerCharacter::UseAmmo; returns the ammo left after the shot.
 	struct PlayerUseAmmoHook
 	{
